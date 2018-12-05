@@ -1,9 +1,6 @@
 # Nano_kwant
-<<<<<<< HEAD
 jk (§('""'))
-=======
 jk 4124124
->>>>>>> ce961856fd0f88fad0c39d49565e33f77c144894
 Hi,
 this is the kwant project
 so the plan is :
