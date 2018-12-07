@@ -23,8 +23,25 @@ c = 299792458       # Light celerity (m/s)
 kB = 1.3806503e-23  # Boltzmann constant (kg m2/Ks2)
 m_e = 9.1e-31       # electron mass (kg)
 a = 1 # new constant
-param_syst = namedtuple("param_syst", "a t R_ext W W_L L_L magn_activated potential_activated")
-param_pot=namedtuple("param_pot", "theta_min theta_max choice_VG VG")
+param_syst = namedtuple("param_syst", "a t R_ext R_conge W W_L L_L magn_activated potential_activated")
+param_pot=namedtuple("param_pot", "theta_min theta_max choice_pot")
+choice_pot=namedtuple("choice_pot", "choice param_constant param_linear param_quadratic")
+param_linear=namedtuple("param_linear", "phi_in_left phi_in_rigth V_left V_rigth V_mid")
+# the tuple work as follow:
+# param_pot: -theta_min: number (minimal angle for the potential region)
+#            -theta_max: number (maximal angle for the potential region)
+#            -choice_pot:-choice: "name" (of the potential, constant, linear, quadradic)
+#                        -param_constant:"V_O"  (value of the potential, unique parameter of the potential)
+#                        -param_linear:- "phi_in_left"
+#                                      - "phi_in_rigth"
+#                                      - "V_left"
+#                                      - "V_rigth"
+#                                      - "V_mid"
+#                        -param_quadratic:- ""to be done 
+
+
+
+
 #%% [markdown]
 # #### Definition of the graphene function with some parameters
 # 
@@ -39,29 +56,43 @@ param_pot=namedtuple("param_pot", "theta_min theta_max choice_VG VG")
 
 # definition of the shape of the potential
 def potential_VG(pos,param_pot):
-        #x, y = pos
+        x, y = pos
         ## work in  polar coordinate since it is a ring
         #r = sqrt(x**2 + y**2)
-        #theta = atan2(y,x)
+        theta = atan2(y,x)
         
          ##function Vg
         
         # constant 
-        if param_pot.choice_VG=='constant':
-            VG=param_pot.VG
+        if param_pot.choice_pot.choice=='constant':
+            VG=param_pot.choice_pot.param_constant
             return VG
             
         # linear 
-        elif param_pot.choice_VG=='linear':
-            VG=0
-            print('still not done, choose 1 ')
-            return VG
+        elif param_pot.choice_pot.choice=='linear':
+            V_mid=param_pot.choice_pot.param_linear.V_mid
+            V_left=param_pot.choice_pot.param_linear.V_left
+            V_rigth=param_pot.choice_pot.param_linear.V_rigth
+            phi_in_left=param_pot.choice_pot.param_linear.phi_in_left
+            phi_in_rigth=param_pot.choice_pot.param_linear.phi_in_rigth
+            phi_min=param_pot.theta_min
+            phi_max=param_pot.theta_max
+            slope_left=(V_mid-V_left)/(phi_in_left-phi_min)
+            slope_rigth=(V_mid-V_rigth)/(phi_in_rigth-phi_max)
+            if phi_min<theta<phi_in_left:
+                return V_left+slope_left*(theta-phi_min)
+            elif phi_in_rigth<theta<phi_max:
+                return V_rigth+slope_rigth*(theta-phi_max)
+            else: 
+                return V_mid
+            #print('still not done, choose 1 ')
+            #return VG
             
             
         # quadratic
-        elif param_pot.choice_VG=='quadratic':
+        elif param_pot.choice_pot.choice=='quadratic':
             VG=0
-            print('still not done, choose 1 ')
+            #print('still not done, choose 1 ')
             return VG
         else: 
             return 0
@@ -87,7 +118,7 @@ def potential(site,param_pot_1,param_pot_2):
                 return 0
         else:
             return 0
-def make_system(param, param_pot_1,param_pot_2):#a=1.0,t=1.0,R_ext=350,W=150,W_L=150,L_L=100,magn_activated=0, potential_activated=0):
+def make_system(param, param_pot_1,param_pot_2):
     a=param.a
     t=param.t
     R_ext=param.R_ext
@@ -96,24 +127,43 @@ def make_system(param, param_pot_1,param_pot_2):#a=1.0,t=1.0,R_ext=350,W=150,W_L
     L_L=param.L_L
     magn_activated=param.magn_activated
     potential_activated=param.potential_activated
-
+    R_conge=param.R_conge
     graphene = kwant.lattice.honeycomb(a,norbs=1)
     a_lat, b_lat = graphene.sublattices
     sys = kwant.Builder()
-    # definition geometry
-    def circle(pos): return (pos[0]**2 + pos[1]**2 <R_ext**2  and pos[0]**2 + pos[1]**2 >(R_ext-W)**2)                             or ((R_ext-W/2)<pos[0]<(R_ext+L_L )
+    # definition geometry (ring)
+    def circle(pos): return (pos[0]**2 + pos[1]**2 <R_ext**2  and pos[0]**2 + pos[1]**2 >(R_ext-W)**2) \
+                            or ((R_ext-W/2)<pos[0]<(R_ext+L_L )
                             and abs(pos[1])<W_L/2) \
                             or (-(R_ext-W/2)>pos[0]>-(R_ext+L_L) 
                             and abs(pos[1])<W_L/2) 
+    # definition geometry (ring smooth)
+    def circle_smooth(pos): 
+        dist_center_x=sqrt(R_ext**2-(R_conge+W_L/2)**2)+R_conge
+        dist_center_y=R_conge+W_L/2
+        #(x-x_center)**2+(y-y_center)**2=R_conge**2
+        return (pos[0]**2 + pos[1]**2 <R_ext**2  and pos[0]**2 + pos[1]**2 >(R_ext-W)**2) \
+                            or ((R_ext-W/2)<pos[0]<(R_ext+L_L )
+                            and abs(pos[1])<W_L/2) \
+                            or (-(R_ext-W/2)>pos[0]>-(R_ext+L_L) 
+                            and abs(pos[1])<W_L/2) \
+                            or (  ((pos[0]-dist_center_x)**2+(pos[1]-dist_center_y)**2>R_conge**2 )
+                            and (W_L/2<pos[1]<(W_L/2+R_conge) and dist_center_x-R_conge<pos[0]<dist_center_x))\
+                            or (  ((pos[0]+dist_center_x)**2+(pos[1]-dist_center_y)**2>R_conge**2 )
+                            and (W_L/2<pos[1]<(W_L/2+R_conge) and -dist_center_x<pos[0]<-dist_center_x+R_conge))\
+                            or (  ((pos[0]-dist_center_x)**2+(pos[1]+dist_center_y)**2>R_conge**2 )
+                            and (-W_L/2-R_conge<pos[1]<-W_L/2 and dist_center_x-R_conge<pos[0]<dist_center_x))\
+                            or (  ((pos[0]+dist_center_x)**2+(pos[1]+dist_center_y)**2>R_conge**2 )
+                            and (-W_L/2-R_conge<pos[1]<-W_L/2 and -dist_center_x<pos[0]<-dist_center_x+R_conge))
     # onsite energy
     if potential_activated==0:
-       sys[graphene.shape(circle, (R_ext-W/2,0))] = 0 
+       sys[graphene.shape(circle_smooth, (R_ext-W/2,0))] = 0 
     elif potential_activated==1:
         sys[graphene.shape(circle, (R_ext-W/2,0))]=potential
     else:
          print('Wrong input parameter for the potential')
     
-    # definition hopping for magentic field        
+    # definition hopping for magnetic field        
     def hopping(site_i, site_j, phi,param_pot_1,param_pot_2):
         xi, yi = site_i.pos
         xj, yj = site_j.pos
@@ -181,11 +231,19 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350, W=100,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=100,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
 
+param_constant_1=2*t
+param_constant_2=1*t
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
+param_linear_2=param_linear( phi_in_left=-95/180*pi, phi_in_rigth=-85/180*pi, V_left=1*t, V_rigth=1*t, V_mid=2.5*t)
+param_quadratic_1=0
+param_quadratic_2=0
+choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
+choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
 
-param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_VG='constant',VG=2*t)
-param_pot_2=param_pot(theta_min=-70/180*pi,theta_max=-45/180*pi,choice_VG='constant',VG=1*t)
+param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
+param_pot_2=param_pot(theta_min=-100/180*pi,theta_max=-80/180*pi,choice_pot=choice_pot_2)
 
 
 H=make_system(param,param_pot_1,param_pot_2)
@@ -207,56 +265,35 @@ a=a0*scaling_fact
 t0=2.8
 t=t0/scaling_fact
 
-#%%
 get_ipython().magic('matplotlib inline')
-#H=make_system(a,t,R_ext,W,W_L,L_L,magn_activated)
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350, W=100,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=0, W=100,W_L=150,L_L=100,magn_activated=0,potential_activated=1)
 
-param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_VG='constant',VG=2*t)
-param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_VG='constant',VG=0)
+param_constant_1=2*t
+param_constant_2=1*t
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
+param_linear_2=param_linear( phi_in_left=-120/180*pi, phi_in_rigth=-60/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
+param_quadratic_1=0
+param_quadratic_2=0
+choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
+choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
+
+param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
+param_pot_2=param_pot(theta_min=-70/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
+
 
 H=make_system(param,param_pot_1,param_pot_2)
 
 Hf=H.finalized()
-#max_E=0.1
-#n=10
-#E_vect=np.zeros(n)
-#T_vect=np.zeros(n)
-#init_val=0.000001
-#incr=(max_E-init_val)/(n-1)
-
-#Results=open("Ring_var_E_fixed_W_R.txt",'w') # Warning: reset every time the results of the .txt file
-#for i in range(0,n):  
-#  E_vect[i]=init_val
-#  smatrix = kwant.smatrix(Hf, energy = init_val)
-#  T_vect[i]=smatrix.transmission(1, 0)
-#  init_val=init_val+incr
-#  Results.write(str(E_vect[i])+"   "+str(T_vect[i])+"   "+"\n")
-#  print(E_vect[i])
-#  print(i)
-#Results.close()
-#plt.plot(E_vect,T_vect)
-#plt.ylabel('transmission T')'
-#plt.xlabel('Energy E')
-#plt.show()
-
-#smatrix = kwant.smatrix(Hf, energy = 0.13,args=[param_pot_1, param_pot_2])
-#T = smatrix.transmission(1,0)
-#print(T)
-#    T2.append(T)
-#    #print(x)
 
 
 E = np.linspace(-0.13,0.13,10)
-#print(E)
+
 T2 = []
 for x in E:
     smatrix = kwant.smatrix(Hf, energy = x,args=[param_pot_1, param_pot_2])
     T = smatrix.transmission(1,0)
     T2.append(T)
-#    #print(x)
-    
-#print(T2)    
+ 
 plt.plot(E,T2)    
 
 #%% [markdown]
@@ -280,10 +317,26 @@ t=t0/scaling_fact
 
 #%%
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350, W=100,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=0, W=100,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
+param_constant_1=2*t
+param_constant_2=1*t
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
+param_linear_2=param_linear( phi_in_left=-120/180*pi, phi_in_rigth=-60/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
+param_quadratic_1=0
+param_quadratic_2=0
+choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
+choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
 
-param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_VG='constant',VG=2*t)
-param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_VG='constant',VG=0)
+param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
+param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
+
+
+
+param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
+param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
+
+#param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_VG='constant',VG=2*t)
+#param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_VG='constant',VG=0)
 
 
 
@@ -326,9 +379,13 @@ plt.show()
 #pyplot.title('Aharonov-Effect')
 
 
-
-
 #%%
-MyStruct = namedtuple("MyStruct", "field1 field2 field3")
-m = MyStruct("foo",1, "baz")
-m.field2
+
+test=namedtuple("test", "one two tree")
+test_1=namedtuple("test_1", "one two tree")
+param_1 = test_1(one=1, two=2, tree=3)
+param = test(one=1, two=2, tree=param_1)
+
+param.tree
+param.tree.tree
+
