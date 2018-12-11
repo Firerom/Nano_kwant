@@ -27,7 +27,7 @@ param_syst = namedtuple("param_syst", "a t R_ext R_conge W W_L L_L magn_activate
 param_pot=namedtuple("param_pot", "theta_min theta_max choice_pot")
 choice_pot=namedtuple("choice_pot", "choice param_constant param_linear param_quadratic")
 param_linear=namedtuple("param_linear", "phi_in_left phi_in_rigth V_left V_rigth V_mid")
-# the tuple work as follow:
+# the tuples work as follow:
 # param_pot: -theta_min: number (minimal angle for the potential region)
 #            -theta_max: number (maximal angle for the potential region)
 #            -choice_pot:-choice: "name" (of the potential, constant, linear, quadradic)
@@ -97,9 +97,9 @@ def potential_VG(pos,param_pot):
         else:
             return 0
 # definition of the potential. Take the position of the site, check in which arm we
-    # are. then depending on the arm we are, the function calls another function that
-    # computes the potential depending on the choice of the form
-def potential(site,param_pot_1,param_pot_2):
+# are. then depending on the arm we are, the function calls another function that
+# computes the potential depending on the choice of the form
+def potential(site,phi,param_pot_1,param_pot_2):
 
         x, y = site.pos
         ## work in  polar coordinate since it is a ring
@@ -233,7 +233,7 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=100,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
 
 param_constant_1=2*t
 param_constant_2=0
@@ -243,23 +243,23 @@ param_quadratic_1=0
 param_quadratic_2=0
 choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
 choice_pot_2=choice_pot( choice='constant', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
-
+phi=0 
 param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
 param_pot_2=param_pot(theta_min=-90/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
 
 
-H=make_system(param,param_pot_1,param_pot_2)
+H=make_system(param, param_pot_1,param_pot_2)
 kwant.plot(H)
 
 Hf=H.finalized()
-vals=[potential(Hf.sites[n], param_pot_1,param_pot_2) for n in range(Hf.graph.num_nodes)]
+vals=[potential(Hf.sites[n], phi,param_pot_1,param_pot_2) for n in range(Hf.graph.num_nodes)]
 kwant.plotter.map(Hf, vals)
 
 #%% [markdown]
 # ## Analysis of the transmission
 
 #%%
-scaling_fact=15
+scaling_fact=5
 #n2D=1.2e16
 #scaling_fact=25
 a0=0.246
@@ -278,7 +278,7 @@ param_quadratic_1=0
 param_quadratic_2=0
 choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
 choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
-
+phi=0
 param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
 param_pot_2=param_pot(theta_min=-70/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
 
@@ -288,11 +288,11 @@ H=make_system(param,param_pot_1,param_pot_2)
 Hf=H.finalized()
 
 
-E = np.linspace(-0.13,0.13,10)
+E = np.linspace(0.01,0.13,25)
 
 T2 = []
 for x in E:
-    smatrix = kwant.smatrix(Hf, energy = x,args=[param_pot_1, param_pot_2])
+    smatrix = kwant.smatrix(Hf, energy = x,args=[phi,param_pot_1, param_pot_2])
     T = smatrix.transmission(1,0)
     T2.append(T)
 
@@ -316,7 +316,7 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=100,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
 param_constant_1=2*t
 param_constant_2=1*t
 param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
@@ -392,28 +392,7 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
-param_constant_1=2*t
-param_constant_2=1*t
-param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
-param_linear_2=param_linear( phi_in_left=-120/180*pi, phi_in_rigth=-60/180*pi, V_left=0, V_rigth=0, V_mid=0)
-param_quadratic_1=0
-param_quadratic_2=0
-choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
-choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
 
-param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
-param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
-
-
-
-param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
-param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
-
-
-H=make_system(param,param_pot_1,param_pot_2)
-
-H_mf=H.finalized()
 
 #### For a realistic value of phi ####
 #B = 0.05 # (Tesla) value of the magnetic field (well, the magnetic flux density for the purists among you)
@@ -421,21 +400,43 @@ H_mf=H.finalized()
 #phi = B * a**2 *sqrt(3)/2)/scaling_fact**2 # with 'a' being the scale value
 
 E=0.1
-N = 100 # number of magnetic field values
+N = 4 # number of magnetic field values
+M =4
 Bmax = 0.05 # higher magnetic field
 Bs = np.linspace(0, Bmax, N) # vector of the magnetic fields
+V_mid_val=np.linspace(0, 3*t, M)
+G = np.zeros([N,M])
 
-G = np.zeros([N,1])
+for i,V_mid_test in enumerate(V_mid_val):
+    #print(V_mid_test)
+    param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=1)
+    param_constant_1=2*t
+    param_constant_2=1*t
+    param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=V_mid_test)
+    param_linear_2=param_linear( phi_in_left=-120/180*pi, phi_in_rigth=-60/180*pi, V_left=0, V_rigth=0, V_mid=0)
+    param_quadratic_1=0
+    param_quadratic_2=0
+    choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
+    choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
 
-for i,B in enumerate(Bs):
-    phi = B * a**2 *sqrt(3)/2 * (1e-18)
-    smatrix = kwant.smatrix(H_mf, energy = E,args=[phi,param_pot_1,param_pot_2] ) # transmission matrix (here this)
-    T = smatrix.transmission(1, 0) # transmission value obtained from the left lead towards the right lead
-    G[i] = T
+    param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
+    param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
 
-plt.plot(Bs,G)
 
-plt.xlabel('Magnetic field (T)')
-plt.ylabel('Transmission (2e²/h)')
+    H=make_system(param,param_pot_1,param_pot_2)
 
+    H_mf=H.finalized()
+    for j,B in enumerate(Bs):
+        phi = B * a**2 *sqrt(3)/2 * (1e-18)
+        smatrix = kwant.smatrix(H_mf, energy = E,args=[phi,param_pot_1,param_pot_2] ) # transmission matrix (here this)
+        T = smatrix.transmission(1, 0) # transmission value obtained from the left lead towards the right lead
+        G[i,j] = T
+        #print(G[i,j])
+
+#plt.plot(Bs,G)
+#plt.contour( [V_mid_val,Bs], G )
+#plt.xlabel('Magnetic field (T)')
+#plt.ylabel('Transmission (2e²/h)')
+np.savetxt('Transmission_B_VSG1.txt', G)
+plt.contour( G )
 plt.show()
