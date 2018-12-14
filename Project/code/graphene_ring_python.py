@@ -282,21 +282,22 @@ phi=0
 param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
 param_pot_2=param_pot(theta_min=-70/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
 
-
 H=make_system(param,param_pot_1,param_pot_2)
-
 Hf=H.finalized()
-
+path=""
 
 E = np.linspace(0.01,0.13,25)
-
+Results=open(str(path)+"Transmission_var_E.txt",'w') # ATTENTION: reset every time the results in there
 T2 = []
 for x in E:
+
     smatrix = kwant.smatrix(Hf, energy = x,args=[phi,param_pot_1, param_pot_2])
     T = smatrix.transmission(1,0)
+    Results.write(str(x)+"   "+str(T)+"   "+"\n")
     T2.append(T)
 
 plt.plot(E,T2)
+Results.close()
 
 #%% [markdown]
 # ## magnetic field
@@ -349,9 +350,11 @@ H_mf=H.finalized()
 #phi = B * a**2 *sqrt(3)/2)/scaling_fact**2 # with 'a' being the scale value
 
 E=0.1
-N = 200 # number of magnetic field values
+N = 100 # number of magnetic field values
 Bmax = 0.05 # higher magnetic field
 Bs = np.linspace(-Bmax, Bmax, N) # vector of the magnetic fields
+path=""
+Results=open(str(path)+"Transmission_var_B.txt",'w') # ATTENTION: reset every time the results in there
 
 G = np.zeros([N,1])
 
@@ -360,7 +363,9 @@ for i,B in enumerate(Bs):
     smatrix = kwant.smatrix(H_mf, energy = E,args=[phi,param_pot_1,param_pot_2] ) # transmission matrix (here this)
     T = smatrix.transmission(1, 0) # transmission value obtained from the left lead towards the right lead
     G[i] = T
+    Results.write(str(B)+"   "+str(G[i])+"   "+"\n")
 
+Results.close()
 plt.plot(Bs,G)
 
 plt.xlabel('Magnetic field (T)')
@@ -400,12 +405,12 @@ t=t0/scaling_fact
 #phi = B * a**2 *sqrt(3)/2)/scaling_fact**2 # with 'a' being the scale value
 
 E=0.1
-N = 4 # number of magnetic field values
-M =4
+N = 25 # number of magnetic field values
+M =6# number of side gate voltage value
 Bmax = 0.05 # higher magnetic field
 Bs = np.linspace(0, Bmax, N) # vector of the magnetic fields
-V_mid_val=np.linspace(0, 3*t, M)
-G = np.zeros([N,M])
+V_mid_val=np.linspace(0, 1.5*t, M)
+G = np.zeros([M,N])
 
 for i,V_mid_test in enumerate(V_mid_val):
     #print(V_mid_test)
@@ -438,5 +443,8 @@ for i,V_mid_test in enumerate(V_mid_val):
 #plt.xlabel('Magnetic field (T)')
 #plt.ylabel('Transmission (2e²/h)')
 np.savetxt('Transmission_B_VSG1.txt', G)
-plt.contour( G )
+plt.contourf( Bs,V_mid_val,G )
+plt.colorbar
+plt.xlabel('Magnetic field (T)')
+plt.ylabel('Side gate voltage')
 plt.show()
