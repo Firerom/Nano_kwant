@@ -160,7 +160,7 @@ def make_system(param, param_pot_1,param_pot_2):
     if potential_activated==0:
        sys[graphene.shape(circle_smooth, (R_ext-W/2,0))] = 0
     elif potential_activated==1:
-        sys[graphene.shape(circle, (R_ext-W/2,0))]=potential
+        sys[graphene.shape(circle_smooth, (R_ext-W/2,0))]=potential
     else:
          print('Wrong input parameter for the potential')
 
@@ -227,12 +227,12 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=100, W=50,W_L=150,L_L=100,magn_activated=0,potential_activated=1)
 
 param_constant_1=2*t
 param_constant_2=0
-param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
-param_linear_2=param_linear( phi_in_left=-95/180*pi, phi_in_rigth=-85/180*pi, V_left=1*t, V_rigth=1*t, V_mid=2.5*t)
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=0.1*t)
+param_linear_2=param_linear( phi_in_left=-95/180*pi, phi_in_rigth=-85/180*pi, V_left=0.05*t, V_rigth=0.1*t, V_mid=0.1*t)
 param_quadratic_1=0
 param_quadratic_2=0
 choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
@@ -246,8 +246,16 @@ H=make_system(param, param_pot_1,param_pot_2)
 kwant.plot(H)
 
 Hf=H.finalized()
+
+## potential plot
 vals=[potential(Hf.sites[n], phi,param_pot_1,param_pot_2) for n in range(Hf.graph.num_nodes)]
 kwant.plotter.map(Hf, vals)
+
+
+## density of state plot
+local_dos = kwant.ldos(Hf, energy=.1,args=[phi,param_pot_1,param_pot_2])
+kwant.plotter.map(Hf, local_dos, num_lead_cells=10)
+
 
 #%% [markdown]
 # ## Analysis of the transmission
@@ -311,7 +319,7 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=1)
 param_constant_1=2*t
 param_constant_2=1*t
 param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
@@ -340,7 +348,7 @@ H_mf=H.finalized()
 #phi = B * a**2 *sqrt(3)/2)/scaling_fact**2 # with 'a' being the scale value
 
 E=0.1
-N = 100 # number of magnetic field values
+N = 2 # number of magnetic field values
 Bmax = 0.05 # higher magnetic field
 Bs = np.linspace(-Bmax, Bmax, N) # vector of the magnetic fields
 path=""
@@ -360,7 +368,7 @@ plt.plot(Bs,G)
 
 plt.xlabel('Magnetic field (T)')
 plt.ylabel('g in unit of (2e²/h)')
-pyplot.title('Aharonov-Effect')
+plt.title('Aharonov-Effect')
 plt.show()
 
 
