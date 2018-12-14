@@ -281,17 +281,17 @@ Hf=H.finalized()
 path=""
 
 E = np.linspace(0.01,0.13,25)
-Results=open(str(path)+"Transmission_var_E.txt",'w') # ATTENTION: reset every time the results in there
+#Results=open(str(path)+"Transmission_var_E.txt",'w') # ATTENTION: reset every time the results in there
 T2 = []
 for x in E:
 
     smatrix = kwant.smatrix(Hf, energy = x,args=[phi,param_pot_1, param_pot_2])
     T = smatrix.transmission(1,0)
-    Results.write(str(x)+"   "+str(T)+"   "+"\n")
+#    Results.write(str(x)+"   "+str(T)+"   "+"\n")
     T2.append(T)
 
 plt.plot(E,T2)
-Results.close()
+#Results.close()
 
 #%% [markdown]
 # ## magnetic field
