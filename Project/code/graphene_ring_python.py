@@ -191,13 +191,7 @@ def make_system(param, param_pot_1,param_pot_2):
     def lead_shape(R): return abs(R[1]) < W_L/2
 
     Hlead =kwant.Builder(sym)
-    #if potential_activated==0:
     Hlead[graphene.shape(lead_shape,(0,0) )]=0
-    #elif potential_activated==1:
-    #    Hlead[graphene.shape(lead_shape,(0,0) )]=potential
-    #else:
-    # print('Wrong input parameter for the potential')
-
     if magn_activated==0:
          Hlead[graphene.neighbors()]=-t
 
@@ -335,10 +329,6 @@ param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choi
 param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
 param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
 
-#param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_VG='constant',VG=2*t)
-#param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_VG='constant',VG=0)
-
-
 
 H=make_system(param,param_pot_1,param_pot_2)
 
@@ -354,8 +344,8 @@ N = 100 # number of magnetic field values
 Bmax = 0.05 # higher magnetic field
 Bs = np.linspace(-Bmax, Bmax, N) # vector of the magnetic fields
 path=""
-Results=open(str(path)+"Transmission_var_B.txt",'w') # ATTENTION: reset every time the results in there
-
+Results=open(str(path)+"Transmission_var_B_"+str(param.W)+"_"+str(param.R_ext)+".txt",'w') # ATTENTION: reset every time the results in there
+#R_ext=350,R_conge=75, W=50,W_L=150,L_L=100
 G = np.zeros([N,1])
 
 for i,B in enumerate(Bs):
@@ -363,24 +353,15 @@ for i,B in enumerate(Bs):
     smatrix = kwant.smatrix(H_mf, energy = E,args=[phi,param_pot_1,param_pot_2] ) # transmission matrix (here this)
     T = smatrix.transmission(1, 0) # transmission value obtained from the left lead towards the right lead
     G[i] = T
-    Results.write(str(B)+"   "+str(G[i])+"   "+"\n")
+    Results.write(str(B)+"   "+str(T)+"   "+"\n")
 
 Results.close()
 plt.plot(Bs,G)
 
 plt.xlabel('Magnetic field (T)')
-plt.ylabel('Transmission (2e²/h)')
-
+plt.ylabel('g in unit of (2e²/h)')
+pyplot.title('Aharonov-Effect')
 plt.show()
-#data = []
-#phis = np.linspace(0,1.,10)
-#for phi in phis:
-#    smatrix = kwant.smatrix(Hf, 3.3,args=[phi])
-#    data.append(smatrix.transmission(1, 0))
-#pyplot.plot(phis, data,'o');
-#pyplot.xlabel('$\phi = BS/(h/e)$')
-#pyplot.ylabel('g in unit of $(2e^2/h)$');
-#pyplot.title('Aharonov-Effect')
 
 
 
@@ -402,7 +383,7 @@ t=t0/scaling_fact
 #### For a realistic value of phi ####
 #B = 0.05 # (Tesla) value of the magnetic field (well, the magnetic flux density for the purists among you)
 
-#phi = B * a**2 *sqrt(3)/2)/scaling_fact**2 # with 'a' being the scale value
+#phi = B * a**2 *sqrt(3)/2/scaling_fact**2 # with 'a' being the scale value
 
 E=0.1
 N = 25 # number of magnetic field values
@@ -436,12 +417,8 @@ for i,V_mid_test in enumerate(V_mid_val):
         smatrix = kwant.smatrix(H_mf, energy = E,args=[phi,param_pot_1,param_pot_2] ) # transmission matrix (here this)
         T = smatrix.transmission(1, 0) # transmission value obtained from the left lead towards the right lead
         G[i,j] = T
-        #print(G[i,j])
 
-#plt.plot(Bs,G)
-#plt.contour( [V_mid_val,Bs], G )
-#plt.xlabel('Magnetic field (T)')
-#plt.ylabel('Transmission (2e²/h)')
+
 np.savetxt('Transmission_B_VSG1.txt', G)
 plt.contourf( Bs,V_mid_val,G )
 plt.colorbar
