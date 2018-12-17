@@ -227,11 +227,11 @@ t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=100, W=50,W_L=150,L_L=100,magn_activated=0,potential_activated=1)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=100, W=100,W_L=150,L_L=200,magn_activated=0,potential_activated=1)
 
 param_constant_1=2*t
 param_constant_2=0
-param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=0.1*t)
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=0.99)
 param_linear_2=param_linear( phi_in_left=-95/180*pi, phi_in_rigth=-85/180*pi, V_left=0.05*t, V_rigth=0.1*t, V_mid=0.1*t)
 param_quadratic_1=0
 param_quadratic_2=0
@@ -248,14 +248,22 @@ kwant.plot(H)
 Hf=H.finalized()
 
 ## potential plot
-vals=[potential(Hf.sites[n], phi,param_pot_1,param_pot_2) for n in range(Hf.graph.num_nodes)]
-kwant.plotter.map(Hf, vals)
+if param.potential_activated==1:
+    vals=[potential(Hf.sites[n], phi,param_pot_1,param_pot_2) for n in range(Hf.graph.num_nodes)]
+    kwant.plotter.map(Hf, vals)
 
 
 ## density of state plot
 local_dos = kwant.ldos(Hf, energy=.1,args=[phi,param_pot_1,param_pot_2])
 kwant.plotter.map(Hf, local_dos, num_lead_cells=10)
 
+# current density plot
+wfs = kwant.wave_function(Hf, energy=0.1,args=[phi,param_pot_1,param_pot_2]) # to obtain the wave functions of the system 
+J0 = kwant.operator.Current(Hf)
+wf_left = wfs(0)
+current = sum(J0(p) for p in wf_left)
+
+kwant.plotter.current(Hf, current, cmap='viridis')
 
 #%% [markdown]
 # ## Analysis of the transmission
@@ -394,11 +402,11 @@ t=t0/scaling_fact
 #phi = B * a**2 *sqrt(3)/2/scaling_fact**2 # with 'a' being the scale value
 
 E=0.1
-N = 25 # number of magnetic field values
-M =6# number of side gate voltage value
+N = 100 # number of magnetic field values
+M =100# number of side gate voltage value
 Bmax = 0.05 # higher magnetic field
 Bs = np.linspace(0, Bmax, N) # vector of the magnetic fields
-V_mid_val=np.linspace(0, 1.5*t, M)
+V_mid_val=np.linspace(0, 0.95, M)
 G = np.zeros([M,N])
 
 for i,V_mid_test in enumerate(V_mid_val):
