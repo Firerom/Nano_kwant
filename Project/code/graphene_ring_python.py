@@ -49,7 +49,9 @@ param_linear=namedtuple("param_linear", "phi_in_left phi_in_rigth V_left V_rigth
 # * W is the width of one ring arm
 # * W_L is the width of the lead
 # * L_L is the length of the lead starting from the outer circle
-#
+# * R_conge is the radius of the circle making the angle between the lead and the ring
+# * a is the scaled lattice parameter
+# * t is the scaled hooping energy term
 
 #%%
 
@@ -61,7 +63,7 @@ def potential_VG(pos,param_pot):
         #r = sqrt(x**2 + y**2)
         theta = atan2(y,x)
 
-         ##function Vg
+        ##function Vg
 
         # constant
         if param_pot.choice_pot.choice=='constant':
@@ -85,8 +87,6 @@ def potential_VG(pos,param_pot):
                 return V_rigth+slope_rigth*(theta-phi_max)
             else:
                 return V_mid
-            #print('still not done, choose 1 ')
-            #return VG
 
 
         # quadratic
@@ -96,9 +96,9 @@ def potential_VG(pos,param_pot):
             return VG
         else:
             return 0
-# definition of the potential. Take the position of the site, check in which arm we
-# are. then depending on the arm we are, the function calls another function that
-# computes the potential depending on the choice of the form
+# Definition of the potential. Take the position of the site, check in which arm we
+# are. Then depending on the arm we are, the function calls another function that
+# computes the potential depending on the choice of the shape of the potential
 def potential(site,phi,param_pot_1,param_pot_2):
 
         x, y = site.pos
@@ -120,7 +120,6 @@ def potential(site,phi,param_pot_1,param_pot_2):
             return 0
 def make_system(param, param_pot_1,param_pot_2):
     a=param.a
-    #print(a)
     t=param.t
     R_ext=param.R_ext
     W=param.W
@@ -160,15 +159,14 @@ def make_system(param, param_pot_1,param_pot_2):
     if potential_activated==0:
        sys[graphene.shape(circle_smooth, (R_ext-W/2,0))] = 0
     elif potential_activated==1:
-        sys[graphene.shape(circle_smooth, (R_ext-W/2,0))]=potential
+       sys[graphene.shape(circle_smooth, (R_ext-W/2,0))]=potential
     else:
-         print('Wrong input parameter for the potential')
+        print('Wrong input parameter for the potential')
 
     # definition hopping for magnetic field
     def hopping(site_i, site_j, phi,param_pot_1,param_pot_2):
         xi, yi = site_i.pos
         xj, yj = site_j.pos
-        #return -t * exp(-0.5j*phi/(h/e)/pi*(xi-xj)*(yi+yj))
         return -t * exp(-1j*phi/(h/e)*pi*(xi-xj)*(yi+yj)/a**2)
 
     hoppings = (((0, 0), a_lat, b_lat), ((0, 1), a_lat, b_lat), ((-1, 1), a_lat, b_lat))
@@ -194,10 +192,8 @@ def make_system(param, param_pot_1,param_pot_2):
     Hlead[graphene.shape(lead_shape,(0,0) )]=0
     if magn_activated==0:
          Hlead[graphene.neighbors()]=-t
-
     elif magn_activated==1:
         Hlead[graphene.neighbors()] = hopping
-
     else:
         print('Wrong input parameter for the magnetic field')
 
@@ -215,23 +211,21 @@ def make_system(param, param_pot_1,param_pot_2):
 
 
 #%% [markdown]
-# #### Creation of the physical graphene ring
+# #### Creation of the physical graphene ring and anlysis of density
 
 #%%
-#n2D=1.2e16
-#scaling_fact=25
-scaling_fact=20
+
+scaling_fact=50
 a0=0.246
 a=a0*scaling_fact
 t0=2.8
 t=t0/scaling_fact
 
-
 param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=100, W=100,W_L=150,L_L=200,magn_activated=0,potential_activated=1)
 
 param_constant_1=2*t
 param_constant_2=0
-param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=0.99)
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=0.03)
 param_linear_2=param_linear( phi_in_left=-95/180*pi, phi_in_rigth=-85/180*pi, V_left=0.05*t, V_rigth=0.1*t, V_mid=0.1*t)
 param_quadratic_1=0
 param_quadratic_2=0
@@ -254,11 +248,12 @@ if param.potential_activated==1:
 
 
 ## density of state plot
-local_dos = kwant.ldos(Hf, energy=.1,args=[phi,param_pot_1,param_pot_2])
+local_dos = kwant.ldos(Hf, energy=.05,args=[phi,param_pot_1,param_pot_2])
 kwant.plotter.map(Hf, local_dos, num_lead_cells=10)
+#kwant.plotter.savefig('test.png')
 
 # current density plot
-wfs = kwant.wave_function(Hf, energy=0.1,args=[phi,param_pot_1,param_pot_2]) # to obtain the wave functions of the system 
+wfs = kwant.wave_function(Hf, energy=0.05,args=[phi,param_pot_1,param_pot_2]) # to obtain the wave functions of the system 
 J0 = kwant.operator.Current(Hf)
 wf_left = wfs(0)
 current = sum(J0(p) for p in wf_left)
@@ -269,16 +264,14 @@ kwant.plotter.current(Hf, current, cmap='viridis')
 # ## Analysis of the transmission
 
 #%%
-scaling_fact=5
-#n2D=1.2e16
-#scaling_fact=25
+scaling_fact=50
 a0=0.246
 a=a0*scaling_fact
 t0=2.8
 t=t0/scaling_fact
 
 get_ipython().magic('matplotlib inline')
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=150,W_L=150,L_L=100,magn_activated=0,potential_activated=0)
 
 param_constant_1=2*t
 param_constant_2=1*t
@@ -294,48 +287,47 @@ param_pot_2=param_pot(theta_min=-70/180*pi,theta_max=-45/180*pi,choice_pot=choic
 
 H=make_system(param,param_pot_1,param_pot_2)
 Hf=H.finalized()
-path=""
 
-E = np.linspace(0.01,0.13,25)
-#Results=open(str(path)+"Transmission_var_E.txt",'w') # ATTENTION: reset every time the results in there
+path=""
+Results=open(str(path)+"Transmission_var_E_"+str(param.W)+"_"+str(param.R_ext)+"_"+str(scaling_fact)+".txt",'w') # ATTENTION: reset every time the results in there
+
+E = np.linspace(0.01,0.05,100)
 T2 = []
 for x in E:
 
     smatrix = kwant.smatrix(Hf, energy = x,args=[phi,param_pot_1, param_pot_2])
     T = smatrix.transmission(1,0)
-#    Results.write(str(x)+"   "+str(T)+"   "+"\n")
+    Results.write(str(x)+"   "+str(T)+"   "+"\n")
     T2.append(T)
 
 plt.plot(E,T2)
-#Results.close()
+Results.close()
+
 
 #%% [markdown]
 # ## magnetic field
-#%% [markdown]
-#
 # AB oscillation have a period given by
 # Detlta_B=h_bar/(e*R_mean^2)
 #
 
 #%%
-scaling_fact=20
-#n2D=1.2e16
-#scaling_fact=25
+scaling_fact=50
 a0=0.246
 a=a0*scaling_fact
 t0=2.8
 t=t0/scaling_fact
 
 
-param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=1)
+param = param_syst(a=a0*scaling_fact, t=t,R_ext=350,R_conge=75, W=50,W_L=150,L_L=100,magn_activated=1,potential_activated=0)
 param_constant_1=2*t
-param_constant_2=1*t
-param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
+param_constant_2=0
+V_mid_C=0.07
+param_linear_1=param_linear( phi_in_left=60/180*pi, phi_in_rigth=120/180*pi, V_left=0, V_rigth=0, V_mid=V_mid_C)
 param_linear_2=param_linear( phi_in_left=-120/180*pi, phi_in_rigth=-60/180*pi, V_left=0, V_rigth=0, V_mid=2*t)
 param_quadratic_1=0
 param_quadratic_2=0
 choice_pot_1=choice_pot( choice='linear', param_constant=param_constant_1, param_linear=param_linear_1, param_quadratic=param_quadratic_1)
-choice_pot_2=choice_pot( choice='linear', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
+choice_pot_2=choice_pot( choice='constant', param_constant=param_constant_2, param_linear=param_linear_2, param_quadratic=param_quadratic_2)
 
 param_pot_1=param_pot(theta_min=45/180*pi,theta_max=135/180*pi,choice_pot=choice_pot_1)
 param_pot_2=param_pot(theta_min=-135/180*pi,theta_max=-45/180*pi,choice_pot=choice_pot_2)
@@ -355,12 +347,12 @@ H_mf=H.finalized()
 
 #phi = B * a**2 *sqrt(3)/2)/scaling_fact**2 # with 'a' being the scale value
 
-E=0.1
-N = 2 # number of magnetic field values
-Bmax = 0.05 # higher magnetic field
-Bs = np.linspace(-Bmax, Bmax, N) # vector of the magnetic fields
+E=0.03
+N = 100 # number of magnetic field values
+Bmax = 0.04 # higher magnetic field
+Bs = np.linspace(0, Bmax, N) # vector of the magnetic fields
 path=""
-Results=open(str(path)+"Transmission_var_B_"+str(param.W)+"_"+str(param.R_ext)+".txt",'w') # ATTENTION: reset every time the results in there
+Results=open(str(path)+"Transmission_var_B_"+str(param.W)+"_"+str(param.R_ext)+"_"+"E_"+str(E)+".txt",'w') # ATTENTION: reset every time the results in there
 #R_ext=350,R_conge=75, W=50,W_L=150,L_L=100
 G = np.zeros([N,1])
 
@@ -386,8 +378,6 @@ plt.show()
 
 
 scaling_fact=20
-#n2D=1.2e16
-#scaling_fact=25
 a0=0.246
 a=a0*scaling_fact
 t0=2.8
